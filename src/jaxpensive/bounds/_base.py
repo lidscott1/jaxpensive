@@ -47,16 +47,31 @@ class GroupSequentialBounds(ABC):
         """
 
     def summary(self) -> None:
-        """Print a formatted table of test parameters and stopping boundaries."""
+        """Print a formatted table of test parameters and stopping boundaries.
+
+        For two-sided tests both the lower (−b_k) and upper (+b_k) boundaries
+        are shown. For one-sided tests a single boundary column is shown.
+        """
         bounds = self.calculate_bounds()
         method_name = getattr(self, "method", self.__class__.__name__)
 
-        header = f"  {'Look':>4}  {'Info fraction':>14}  {'Boundary (z)':>12}"
+        if self.sides == 2:
+            header = (
+                f"  {'Look':>4}  {'Info fraction':>14}"
+                f"  {'Lower (z)':>10}  {'Upper (z)':>10}"
+            )
+            rows = [
+                f"  {k + 1:>4}  {t:>14.4f}  {-b:>10.4f}  {b:>10.4f}"
+                for k, (t, b) in enumerate(zip(self.info_fractions, bounds))
+            ]
+        else:
+            header = f"  {'Look':>4}  {'Info fraction':>14}  {'Boundary (z)':>12}"
+            rows = [
+                f"  {k + 1:>4}  {t:>14.4f}  {b:>12.4f}"
+                for k, (t, b) in enumerate(zip(self.info_fractions, bounds))
+            ]
+
         sep = "  " + "-" * (len(header) - 2)
-        rows = [
-            f"  {k + 1:>4}  {t:>14.4f}  {b:>12.4f}"
-            for k, (t, b) in enumerate(zip(self.info_fractions, bounds))
-        ]
 
         print(f"\nGroup Sequential Bounds — {method_name}")
         print(f"  Looks : {self.reads}")

@@ -60,6 +60,10 @@ This is the Brownian motion covariance — a fundamental property of sequential 
 O'Brien-Fleming, K=4, alpha=0.05, two-sided: bounds ≈ [4.049, 2.863, 2.338, 2.024]
 Pocock, K=4, alpha=0.05, two-sided: bounds ≈ [2.361, 2.361, 2.361, 2.361]
 
-## What's planned next
-- Phase 3: alpha spending functions (`spending/functions.py`) — Lan-DeMets
-- Phase 4: recursive Brownian motion boundary solver (`spending/solver.py`)
+## Status
+- [x] `CanonicalBounds` with O'Brien-Fleming and Pocock — complete, 25 tests passing
+- [x] Input validation, NumPy docstrings, type hints
+- [x] GitHub Actions CI, BSD 3-Clause license
+- [x] Demo notebook (`notebooks/demo.ipynb`)
+- [x] Issue #3: `summary()` shows lower (−b_k) and upper (+b_k) columns for two-sided tests
+- [ ] Alpha spending — `spending/functions.py` + `spending/solver.py` (Lan-DeMets)

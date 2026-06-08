@@ -50,6 +50,36 @@ class TestPocock:
 
 
 # ---------------------------------------------------------------------------
+# summary() output
+# ---------------------------------------------------------------------------
+
+class TestSummary:
+    def test_two_sided_shows_both_boundaries(self, capsys):
+        CanonicalBounds(4, 0.05, 2, "obrien_fleming").summary()
+        out = capsys.readouterr().out
+        assert "Lower (z)" in out
+        assert "Upper (z)" in out
+        assert "Boundary (z)" not in out
+
+    def test_two_sided_lower_is_negative_of_upper(self, capsys):
+        CanonicalBounds(4, 0.05, 2, "obrien_fleming").summary()
+        out = capsys.readouterr().out
+        import re
+        values = [float(v) for v in re.findall(r"-?\d+\.\d+", out)]
+        bounds = CanonicalBounds(4, 0.05, 2, "obrien_fleming").calculate_bounds()
+        for b in bounds:
+            assert pytest.approx(-b, abs=1e-3) in values
+            assert pytest.approx(b, abs=1e-3) in values
+
+    def test_one_sided_shows_single_boundary(self, capsys):
+        CanonicalBounds(4, 0.05, 1, "obrien_fleming").summary()
+        out = capsys.readouterr().out
+        assert "Boundary (z)" in out
+        assert "Lower (z)" not in out
+        assert "Upper (z)" not in out
+
+
+# ---------------------------------------------------------------------------
 # Input validation
 # ---------------------------------------------------------------------------
 
