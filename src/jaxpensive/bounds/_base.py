@@ -14,14 +14,29 @@ class GroupSequentialBounds(ABC):
         Overall type I error rate, in (0, 1).
     sides : int
         1 for one-sided test, 2 for two-sided test.
+    info_fractions : list[float] | None, optional
+        Information fractions at each look, values in (0, 1] strictly
+        increasing with last value equal to 1.0. When provided, overrides
+        the default equally-spaced fractions ``[1/K, 2/K, ..., 1]``.
+        Length must equal ``reads``.
     """
 
-    def __init__(self, reads: int, alpha: float, sides: int) -> None:
+    def __init__(
+        self,
+        reads: int,
+        alpha: float,
+        sides: int,
+        info_fractions: list[float] | None = None,
+    ) -> None:
         self._validate(reads, alpha, sides)
         self.reads = reads
         self.alpha = alpha
         self.sides = sides
-        self.info_fractions: list[float] = [k / reads for k in range(1, reads + 1)]
+        if info_fractions is not None:
+            self._validate_info_fractions(info_fractions, reads)
+            self.info_fractions: list[float] = list(info_fractions)
+        else:
+            self.info_fractions = [k / reads for k in range(1, reads + 1)]
 
     @staticmethod
     def _validate(reads: int, alpha: float, sides: int) -> None:
@@ -31,6 +46,19 @@ class GroupSequentialBounds(ABC):
             raise ValueError(f"alpha must be in (0, 1), got {alpha!r}")
         if sides not in (1, 2):
             raise ValueError(f"sides must be 1 or 2, got {sides!r}")
+
+    @staticmethod
+    def _validate_info_fractions(info_fractions: list[float], reads: int) -> None:
+        if len(info_fractions) != reads:
+            raise ValueError(
+                f"info_fractions length ({len(info_fractions)}) must equal reads ({reads})"
+            )
+        if not all(0 < t <= 1 for t in info_fractions):
+            raise ValueError("all info_fractions must be in (0, 1]")
+        if not all(info_fractions[i] < info_fractions[i + 1] for i in range(len(info_fractions) - 1)):
+            raise ValueError("info_fractions must be strictly increasing")
+        if info_fractions[-1] != 1.0:
+            raise ValueError(f"last info_fraction must be 1.0, got {info_fractions[-1]!r}")
 
     def _covariance_matrix(self) -> np.ndarray:
         t = np.asarray(self.info_fractions, dtype=float)

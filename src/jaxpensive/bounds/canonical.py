@@ -47,12 +47,13 @@ class CanonicalBounds(GroupSequentialBounds):
         alpha: float,
         sides: int,
         method: MethodType,
+        info_fractions: list[float] | None = None,
     ) -> None:
         if method not in self.METHODS:
             raise ValueError(
                 f"method must be 'obrien_fleming' or 'pocock', got {method!r}"
             )
-        super().__init__(reads, alpha, sides)
+        super().__init__(reads, alpha, sides, info_fractions=info_fractions)
         self.method = method
 
     def _bounds_from_critical_value(self, c: float) -> np.ndarray:

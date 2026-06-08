@@ -1,1 +1,1 @@
-# Alpha spending functions — Lan-DeMets approach (planned Phase 3)
+# Alpha spending bounds — Lan-DeMets approach
