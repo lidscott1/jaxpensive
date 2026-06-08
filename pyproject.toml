@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/lidscott/jaxpensive"
+Repository = "https://github.com/lidscott1/jaxpensive"
 
 [build-system]
 requires = ["hatchling"]
