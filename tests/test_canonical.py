@@ -80,6 +80,39 @@ class TestSummary:
 
 
 # ---------------------------------------------------------------------------
+# info_fractions parameter
+# ---------------------------------------------------------------------------
+
+class TestInfoFractions:
+    def test_custom_fractions_override_equally_spaced(self):
+        fractions = [0.2, 0.4, 0.7, 1.0]
+        b = CanonicalBounds(4, 0.05, 2, "obrien_fleming", info_fractions=fractions)
+        assert b.info_fractions == fractions
+
+    def test_equally_spaced_default_unchanged(self):
+        b = CanonicalBounds(4, 0.05, 2, "obrien_fleming")
+        assert b.info_fractions == [0.25, 0.5, 0.75, 1.0]
+
+    def test_custom_fractions_change_bounds(self):
+        equal = CanonicalBounds(4, 0.05, 2, "obrien_fleming")
+        unequal = CanonicalBounds(4, 0.05, 2, "obrien_fleming",
+                                  info_fractions=[0.1, 0.3, 0.6, 1.0])
+        import numpy as np
+        assert not np.allclose(equal.calculate_bounds(), unequal.calculate_bounds())
+
+    @pytest.mark.parametrize("fractions,match", [
+        ([0.25, 0.5, 0.75],        "length"),        # wrong length
+        ([0.25, 0.5, 0.75, 0.9],   "1.0"),           # last != 1.0
+        ([0.0, 0.5, 0.75, 1.0],    r"\(0, 1\]"),     # zero not in (0,1]
+        ([0.5, 0.25, 0.75, 1.0],   "increasing"),    # not strictly increasing
+        ([0.25, 0.25, 0.75, 1.0],  "increasing"),    # duplicate
+    ])
+    def test_invalid_info_fractions(self, fractions, match):
+        with pytest.raises(ValueError, match=match):
+            CanonicalBounds(4, 0.05, 2, "obrien_fleming", info_fractions=fractions)
+
+
+# ---------------------------------------------------------------------------
 # Input validation
 # ---------------------------------------------------------------------------
 
