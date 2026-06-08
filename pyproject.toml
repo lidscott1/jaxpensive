@@ -3,11 +3,12 @@ name = "jaxpensive"
 version = "0.1.0"
 description = "Group sequential testing bounds for interim analyses"
 readme = "README.md"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 authors = [{ name = "Liam Scott", email = "lidscott@gmail.com" }]
 requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: BSD License",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Mathematics",
     "Programming Language :: Python :: 3",
