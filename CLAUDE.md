@@ -14,14 +14,16 @@ Group sequential testing: frequentist hypothesis testing with planned interim an
 ## Package structure
 ```
 src/jaxpensive/
-├── __init__.py              # public API: CanonicalBounds
+├── __init__.py              # public API: CanonicalBounds, AlphaSpendingBounds
 ├── bounds/
-│   ├── _base.py             # abstract GroupSequentialBounds (summary, covariance)
+│   ├── _base.py             # abstract GroupSequentialBounds (summary, covariance, info_fractions)
 │   └── canonical.py         # CanonicalBounds — O'Brien-Fleming and Pocock
-└── spending/                # future: alpha spending (Lan-DeMets)
-    └── __init__.py
+└── spending/
+    ├── __init__.py
+    └── bounds.py            # AlphaSpendingBounds — Jennison-Turnbull density propagation
 tests/
-└── test_canonical.py
+├── test_canonical.py
+└── test_spending_bounds.py
 ```
 
 ## The two canonical methods
@@ -41,6 +43,23 @@ This is the Brownian motion covariance — a fundamental property of sequential 
 ## Solver
 `scipy.optimize.brentq` finds `c` such that the probability of never crossing the boundary under H0 equals `1 - alpha` (one-sided) or `1 - alpha/2` (two-sided). Uses `scipy.stats.multivariate_normal.cdf`.
 
+## AlphaSpendingBounds
+Uses the Jennison-Turnbull density propagation algorithm (O(K×N²), N=200 grid points).
+Maintains a 1D probability density over the test statistic and propagates it forward at each
+look via the Brownian increment kernel. Per-look bounds are found by Brent's method on the
+tail integral. Supports three spending shapes via `method`:
+
+| Method | Spending formula α*(t) | Character |
+|--------|----------------------|-----------|
+| `obf` | `2(1 − Φ(z_{α/2}/√t))` | Approximate OBF shape |
+| `pocock` | `α · ln(1 + (e−1)·t)` | Approximate Pocock shape |
+| `power` | `α · t^ρ` (requires `rho > 0`) | Tunable; ρ=1 is linear |
+
+OBF/Pocock spending bounds approximate (but don't exactly match) canonical bounds:
+typical discrepancy is 0.05–0.15 at early looks.
+
+`info_fractions` on the base class enables unequally-spaced looks (unique to spending approach).
+
 ## Conventions
 - All public method signatures have type hints
 - Docstrings use NumPy style
@@ -48,7 +67,8 @@ This is the Brownian motion covariance — a fundamental property of sequential 
 - `reads` must be an integer >= 2
 - `alpha` must be a float in (0, 1)
 - `sides` must be 1 or 2
-- `method` must be one of `CanonicalBounds.METHODS`
+- `method` must be one of the class's `METHODS` tuple
+- `np.trapezoid` (not deprecated `np.trapz`) — package requires NumPy >= 2.0 behaviour
 
 ## Testing philosophy
 - Tests verify numerical correctness against published tables (Pocock 1977, O'Brien & Fleming 1979)
@@ -61,9 +81,11 @@ O'Brien-Fleming, K=4, alpha=0.05, two-sided: bounds ≈ [4.049, 2.863, 2.338, 2.
 Pocock, K=4, alpha=0.05, two-sided: bounds ≈ [2.361, 2.361, 2.361, 2.361]
 
 ## Status
-- [x] `CanonicalBounds` with O'Brien-Fleming and Pocock — complete, 25 tests passing
+- [x] `CanonicalBounds` with O'Brien-Fleming and Pocock — complete, 33 tests passing
 - [x] Input validation, NumPy docstrings, type hints
 - [x] GitHub Actions CI, BSD 3-Clause license
 - [x] Demo notebook (`notebooks/demo.ipynb`)
 - [x] Issue #3: `summary()` shows lower (−b_k) and upper (+b_k) columns for two-sided tests
-- [ ] Alpha spending — `spending/functions.py` + `spending/solver.py` (Lan-DeMets)
+- [x] Issue #8: `info_fractions` parameter on `GroupSequentialBounds` for unequally-spaced looks
+- [x] Issue #5: `AlphaSpendingBounds` (Jennison-Turnbull) — obf, pocock, power spending — 33 tests passing
+- [ ] Issue #7: demo notebook update for `AlphaSpendingBounds`
