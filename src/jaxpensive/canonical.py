@@ -4,7 +4,7 @@ import numpy as np
 from scipy.optimize import brentq
 from scipy.stats import multivariate_normal
 
-from jaxpensive.bounds._base import GroupSequentialBounds
+from jaxpensive._base import GroupSequentialBounds
 
 MethodType = Literal["obrien_fleming", "pocock"]
 

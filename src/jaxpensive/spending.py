@@ -7,7 +7,7 @@ from scipy.optimize import brentq
 from scipy.special import roots_legendre
 from scipy.stats import norm
 
-from jaxpensive.bounds._base import GroupSequentialBounds
+from jaxpensive._base import GroupSequentialBounds
 
 MethodType = Literal["obf", "pocock", "power", "custom"]
 
