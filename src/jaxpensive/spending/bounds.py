@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Literal
 
 import numpy as np
@@ -8,7 +9,7 @@ from scipy.stats import norm
 
 from jaxpensive.bounds._base import GroupSequentialBounds
 
-MethodType = Literal["obf", "pocock", "power"]
+MethodType = Literal["obf", "pocock", "power", "custom"]
 
 
 class AlphaSpendingBounds(GroupSequentialBounds):
@@ -32,6 +33,7 @@ class AlphaSpendingBounds(GroupSequentialBounds):
     * ``'obf'``    — O'Brien-Fleming shape: ``α*(t) = 2(1 − Φ(z_{α/2} / √t))``
     * ``'pocock'`` — Pocock shape: ``α*(t) = α · ln(1 + (e−1)·t)``
     * ``'power'``  — Power family: ``α*(t) = α · t^ρ`` (requires ``rho > 0``)
+    * ``'custom'`` — caller-supplied function (requires ``spending_fn``)
 
     Parameters
     ----------
@@ -51,7 +53,12 @@ class AlphaSpendingBounds(GroupSequentialBounds):
         Must be > 0. Default 1.0 (linear spending).
     n_nodes : int, optional
         Number of Gauss-Legendre nodes for density representation and
-        integration. Cost is O(n_nodes²) per look. Default 50.
+        integration. Cost is O(n_nodes²) per look. Default 128.
+    spending_fn : callable, optional
+        Required when ``method='custom'``. A function ``f(t: float) -> float``
+        that returns the cumulative alpha spent by information time ``t``.
+        Must satisfy ``f(0) = 0`` and ``f(1) ≈ alpha``, and be
+        non-decreasing on ``(0, 1]``.
 
     Examples
     --------
@@ -64,7 +71,7 @@ class AlphaSpendingBounds(GroupSequentialBounds):
     array([2.3..., 2.3..., 2.3..., 2.3...])
     """
 
-    METHODS: tuple[str, ...] = ("obf", "pocock", "power")
+    METHODS: tuple[str, ...] = ("obf", "pocock", "power", "custom")
     _MAX_Z: float = 8.0
 
     def __init__(
@@ -75,7 +82,8 @@ class AlphaSpendingBounds(GroupSequentialBounds):
         method: MethodType,
         info_fractions: list[float] | None = None,
         rho: float = 1.0,
-        n_nodes: int = 50,
+        n_nodes: int = 128,
+        spending_fn: Callable[[float], float] | None = None,
     ) -> None:
         if method not in self.METHODS:
             raise ValueError(
@@ -83,15 +91,36 @@ class AlphaSpendingBounds(GroupSequentialBounds):
             )
         if method == "power" and rho <= 0:
             raise ValueError(f"rho must be > 0 for power spending, got {rho!r}")
+        if method == "custom":
+            if spending_fn is None:
+                raise ValueError("spending_fn must be provided when method='custom'")
+            if not callable(spending_fn):
+                raise ValueError("spending_fn must be callable")
+            if abs(spending_fn(0.0)) > 1e-8:
+                raise ValueError(
+                    f"spending_fn(0) must be 0, got {spending_fn(0.0)!r}"
+                )
+            if abs(spending_fn(1.0) - alpha) > 1e-4:
+                raise ValueError(
+                    f"spending_fn(1) must equal alpha ({alpha}), "
+                    f"got {spending_fn(1.0)!r}"
+                )
+        elif spending_fn is not None:
+            raise ValueError(
+                f"spending_fn is only used when method='custom'; got method={method!r}"
+            )
         super().__init__(reads, alpha, sides, info_fractions=info_fractions)
         self.method = method
         self.rho = rho
         self.n_nodes = n_nodes
+        self.spending_fn = spending_fn
 
     def _cumulative_spend(self, t: float) -> float:
         """Total cumulative alpha spent up to information time t."""
         if t <= 0.0:
             return 0.0
+        if self.method == "custom":
+            return float(np.clip(self.spending_fn(t), 0.0, self.alpha))
         if self.method == "obf":
             z = norm.ppf(1.0 - self.alpha / 2.0)
             return float(min(2.0 * (1.0 - norm.cdf(z / np.sqrt(t))), self.alpha))
@@ -182,8 +211,10 @@ class AlphaSpendingBounds(GroupSequentialBounds):
 
     def __repr__(self) -> str:
         rho_part = f", rho={self.rho!r}" if self.method == "power" else ""
+        fn_name = getattr(self.spending_fn, "__name__", "<lambda>")
+        fn_part = f", spending_fn={fn_name!r}" if self.method == "custom" else ""
         return (
             f"{self.__class__.__name__}("
             f"reads={self.reads}, alpha={self.alpha}, sides={self.sides}, "
-            f"method={self.method!r}{rho_part})"
+            f"method={self.method!r}{rho_part}{fn_part})"
         )
