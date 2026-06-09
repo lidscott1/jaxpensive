@@ -106,6 +106,59 @@ class TestUnequallySpacedLooks:
 
 
 # ---------------------------------------------------------------------------
+# Custom spending function
+# ---------------------------------------------------------------------------
+
+class TestCustomSpending:
+    def test_custom_linear_matches_power_rho1(self):
+        # alpha * t  is identical to power(rho=1); results should match to solver tol
+        alpha = 0.05
+        b_power  = AlphaSpendingBounds(4, alpha, 2, "power", rho=1.0)
+        b_custom = AlphaSpendingBounds(4, alpha, 2, "custom",
+                                       spending_fn=lambda t: alpha * t)
+        np.testing.assert_allclose(
+            b_power.calculate_bounds(), b_custom.calculate_bounds(), atol=1e-4
+        )
+
+    def test_custom_hwang_shih_decani_runs(self):
+        # Hwang-Shih-DeCani family: f(t) = alpha*(1-exp(-phi*t))/(1-exp(-phi))
+        # This is iuse=4 in ldbounds and is not a built-in method here.
+        alpha, phi = 0.05, -4.0
+        def hsd(t: float) -> float:
+            return alpha * (1 - np.exp(-phi * t)) / (1 - np.exp(-phi))
+        b = AlphaSpendingBounds(4, alpha, 2, "custom", spending_fn=hsd)
+        bounds = b.calculate_bounds()
+        assert len(bounds) == 4
+        assert all(np.isfinite(bounds))
+        assert all(bounds > 0)
+
+    def test_custom_function_required_with_custom_method(self):
+        with pytest.raises(ValueError, match="spending_fn must be provided"):
+            AlphaSpendingBounds(4, 0.05, 2, "custom")
+
+    def test_spending_fn_rejected_for_builtin_method(self):
+        with pytest.raises(ValueError, match="only.*custom"):
+            AlphaSpendingBounds(4, 0.05, 2, "pocock",
+                                spending_fn=lambda t: 0.05 * t)
+
+    def test_invalid_fn_nonzero_at_zero(self):
+        with pytest.raises(ValueError, match="spending_fn\\(0\\)"):
+            AlphaSpendingBounds(4, 0.05, 2, "custom",
+                                spending_fn=lambda t: 0.01 + 0.04 * t)
+
+    def test_invalid_fn_wrong_total(self):
+        with pytest.raises(ValueError, match="spending_fn\\(1\\)"):
+            AlphaSpendingBounds(4, 0.05, 2, "custom",
+                                spending_fn=lambda t: 0.04 * t)
+
+    def test_repr_shows_function_name(self):
+        def my_spend(t: float) -> float:
+            return 0.05 * t
+        b = AlphaSpendingBounds(4, 0.05, 2, "custom", spending_fn=my_spend)
+        assert "my_spend" in repr(b)
+
+
+# ---------------------------------------------------------------------------
 # Cumulative spending properties
 # ---------------------------------------------------------------------------
 
