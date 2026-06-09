@@ -44,19 +44,22 @@ This is the Brownian motion covariance — a fundamental property of sequential 
 `scipy.optimize.brentq` finds `c` such that the probability of never crossing the boundary under H0 equals `1 - alpha` (one-sided) or `1 - alpha/2` (two-sided). Uses `scipy.stats.multivariate_normal.cdf`.
 
 ## AlphaSpendingBounds
-Uses the Jennison-Turnbull density propagation algorithm (O(K×N²), N=200 grid points).
-Maintains a 1D probability density over the test statistic and propagates it forward at each
-look via the Brownian increment kernel. Per-look bounds are found by Brent's method on the
-tail integral. Supports three spending shapes via `method`:
+Uses the Jennison-Turnbull density propagation algorithm with **Gauss-Legendre quadrature**
+(O(K×N²), default N=50 GL nodes). Maintains a 1D probability density over the test statistic;
+at each look a `CubicSpline` is fitted to the density at the GL nodes so that both the tail
+integral (inside Brent's) and the propagation integral can evaluate the density at arbitrary
+points. The propagation integrates over the continuation region `[−c_k, c_k]` (two-sided) or
+`[−MAX_Z, c_k]` (one-sided), keeping the kink at the stopping boundary outside the integration
+domain — this is why GL achieves exponential convergence here. Accuracy vs `ldbounds` (R):
+< 0.001 for Pocock and Power methods with N=50 nodes. `n_nodes` controls accuracy/speed.
+
+Spending shapes via `method`:
 
 | Method | Spending formula α*(t) | Character |
 |--------|----------------------|-----------|
 | `obf` | `2(1 − Φ(z_{α/2}/√t))` | Approximate OBF shape |
 | `pocock` | `α · ln(1 + (e−1)·t)` | Approximate Pocock shape |
 | `power` | `α · t^ρ` (requires `rho > 0`) | Tunable; ρ=1 is linear |
-
-OBF/Pocock spending bounds approximate (but don't exactly match) canonical bounds:
-typical discrepancy is 0.05–0.15 at early looks.
 
 `info_fractions` on the base class enables unequally-spaced looks (unique to spending approach).
 
@@ -68,7 +71,7 @@ typical discrepancy is 0.05–0.15 at early looks.
 - `alpha` must be a float in (0, 1)
 - `sides` must be 1 or 2
 - `method` must be one of the class's `METHODS` tuple
-- `np.trapezoid` (not deprecated `np.trapz`) — package requires NumPy >= 2.0 behaviour
+- `AlphaSpendingBounds` uses `scipy.special.roots_legendre` + `scipy.interpolate.CubicSpline`; do not replace with a uniform-grid trapezoid approach
 
 ## Testing philosophy
 - Tests verify numerical correctness against published tables (Pocock 1977, O'Brien & Fleming 1979)
