@@ -23,7 +23,7 @@ This solves sequential boundaries exploiting properties of brownian motion that 
 ## Installation
 
 ```bash
-pip install jaxpensive
+pip install git+https://github.com/lidscott1/jaxpensive.git
 ```
 
 ## Usage
